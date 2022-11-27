@@ -1,0 +1,7 @@
+name: "quiz-dustry" 
+displayName: "Quizdustry"
+author: "Emanuel G"
+description: An experimental quiz engine and also a library on Mindustry.
+version: "0.1 Pre-Alpha" 
+minGameVersion: 137
+hidden: true
