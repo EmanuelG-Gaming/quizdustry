@@ -1,7 +1,7 @@
 // Example quiz (in main.js):
 /*
   // Including the header file (make sure you have this library as a dependency for your mod) 
-  const Quizzes = require("quiz/Quizzes");
+  const Quizzes = require("quiz-dustry/quiz/Quizzes");
  
   Events.on(ClientLoadEvent, () => {
       let exampleQuiz = new Quizzes.Quiz("Example quiz");
