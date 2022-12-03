@@ -1,14 +1,37 @@
 const Quiz = require("quiz/type/structures/Quiz"),
       QuizEntry = require("quiz/type/structures/QuizEntry"),
-      Answer = require("quiz/type/structures/Answer"); 
-      
+      Answer = require("quiz/type/structures/Answer"),
+      QuizStats = require("quiz/type/QuizStats");
+
+function QuizWinDialog(answers) {
+	this.answers = answers;
+	return {
+		answers: this.answers,
+		show(correctAnswers) {
+			 let dialog = new BaseDialog("Quiz finished");
+			
+			 dialog.cont.table(Styles.none, t => {
+				 t.add(Core.bundle.format("ui.quiz-pages", correctAnswers, this.answers.length)).color(Color.lightGray);
+				 t.add("answers").padLeft(8);
+			 }).row();
+			 dialog.cont.button("@back", Icon.left, () => dialog.hide()).size(120, 50).margin(12).padTop(20);
+			
+			 dialog.show();
+		},
+	};
+};
+
 function QuizDialog(quiz) {
 	this.quiz = quiz;
 	return {
 		quiz: this.quiz,
+		stats: new QuizStats(),
 		currentIndex: 0,
-		currentEntry: null,
+		correctAnswersTotal: 0,
+		answered: [],
 		answersChecked: [],
+		currentEntry: null,
+		dialog: null,
 		show() {
 			this.start();
 			
@@ -35,13 +58,24 @@ function QuizDialog(quiz) {
                 }
             });
             
+            dialog.titleTable.row();
+			dialog.titleTable.table(Styles.none, t => {
+				t.add("").update(l => {
+					let answered = this.stats.correctAnswers;
+                    l.setText(Core.bundle.format("ui.quiz-number", answered));
+                });
+                t.image(Icon.ok).size(40).padLeft(8);
+			}).padTop(16).padRight(60).right();
+			
 			dialog.addCloseButton();
+			this.dialog = dialog;
 			
 			dialog.show();
 		},
 		rebuild(table) {
 			let entry = this.currentEntry;
 			
+			this.answersChecked = [];
 			table.clear();
 			table.table(Styles.none, t => {
 				 t.add(entry != null ? entry.title : "<None>").padBottom(8);
@@ -62,16 +96,30 @@ function QuizDialog(quiz) {
 						         this.answersChecked.push(a);
 						         if (this.answersChecked.length >= correctAnswers) {
 							         this.answersChecked.forEach((ans, i) => {
+								         this.answered.push(ans);
+								         this.stats.correctAnswers = this.correctAnswersDone();
 								         Time.run(40 * i, run(() => {
 						                     if (ans.isCorrect) {
                                                  Sounds.unlock.play();
                                              }
-                                             else Sounds.shootBig.play();
+                                             else {
+                                                 Sounds.shootBig.play();
+                                             }
                                          }));
                                      });
 						             entry.answered = true;
 						             this.answersChecked = [];
 					             }
+					             if (this.answered.length >= this.correctAnswersTotal) {  
+						             Time.run(120 + 30, run(() => {
+							             let winDialog = new QuizWinDialog(this.answered);
+						                 if (this.dialog.isShown()) {
+							                 this.dialog.hide();
+							             }
+							             let correct = this.stats.correctAnswers;
+						                 winDialog.show(correct);
+					                 }));
+						         }
                              }).size(200, 60).padLeft(4).get();
                              
                              image.update(() => {
@@ -99,12 +147,27 @@ function QuizDialog(quiz) {
 		start() {
 			if (quiz.entries.length > 0) {
                 this.currentEntry = quiz.entries[0];
+                let result = 0;
                 for (let entry of quiz.entries) {
                 	entry.answered = false;
+                    entry.answers.each(a => {
+					     if (a.isCorrect) result++;
+			        });
                 }
+                this.correctAnswersTotal = result;
             }
             this.currentIndex = 0;
+            this.stats.correctAnswers = 0;
             this.answersChecked = [];
+		},
+		correctAnswersDone() {
+			let result = 0;
+			this.answered.forEach(a => {
+		        if (a.isCorrect) {
+					 result++;
+			    }
+			});
+			return result;
 		},
 		setIndex(number) {
 			this.currentIndex = number;
@@ -311,7 +374,9 @@ module.exports = {
 	Quiz: Quiz,
 	QuizEntry: QuizEntry,
 	Answer: Answer,
+	QuizStats: QuizStats,
 	
+	QuizWinDialog: QuizWinDialog,
 	QuizDialog: QuizDialog,
 	QuizListDialog: QuizListDialog,
 	QuizNewDialog: QuizNewDialog,
